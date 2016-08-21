@@ -18,3 +18,6 @@ function recv(v)
   tprint(v, 0)
 end
 
+
+local obj = {key= "str"}
+send({key= "str", miaou={1,2,3}})

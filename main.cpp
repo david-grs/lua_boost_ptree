@@ -105,36 +105,34 @@ struct Script
     }
 
 private:
-    int Receive(lua_State* lua_state)
+    int Receive(lua_State* L)
     {
-        std::stringstream str_buf;
-        while(lua_gettop(lua_state))
+        std::ostringstream oss;
+
+        lua_settop(L, 1);
+        luaL_checktype(L, 1, LUA_TTABLE);
+
+        lua_pushvalue(L, -1);
+        lua_pushnil(L);
+
+        while (lua_next(L, -2))
         {
-            str_buf.str(std::string());
-            str_buf << " ";
-            switch(lua_type(lua_state, lua_gettop(lua_state)))
+            lua_pushvalue(L, -2);
+            oss << "\"" << lua_tostring(L, -1) << "\": ";
+
+            switch(lua_type(L, -2))
             {
-            case LUA_TNUMBER:
-                str_buf << "script returned the number: "
-                    << lua_tonumber(lua_state, lua_gettop(lua_state));
-                break;
-            case LUA_TTABLE:
-                str_buf << "script returned a table";
-                break;
-            case LUA_TSTRING:
-                str_buf << "script returned the string: "
-                    << lua_tostring(lua_state, lua_gettop(lua_state));
-                break;
-            case LUA_TBOOLEAN:
-                str_buf << "script returned the boolean: "
-                    << lua_toboolean(lua_state, lua_gettop(lua_state));
-                break;
-            default:
-                str_buf << "script returned an unknown-type value";
+            //case LUA_TTABLE: oss << lua_tonumber(L, -2); break;
+            case LUA_TNUMBER: oss << lua_tonumber(L, -2); break;
+            case LUA_TBOOLEAN: oss << lua_toboolean(L, -2); break;
+            case LUA_TSTRING: oss << "\"" << lua_tostring(L, -2) << "\""; break;
+            default: break;
             }
-            lua_pop(lua_state, 1);
-            std::cout << str_buf.str() << std::endl;
+
+            lua_pop(L, 2);
         }
+
+        std::cout << oss.str()<<std::endl;
 
         return 0;
     }
@@ -163,11 +161,14 @@ int main(int argc, char** argv)
 
     Script script;
     script.Execute(argv[1]);
+
+    /*
     script.Call("[1,2,3]");
     script.Call("[\"FX\", \"FX1\", \"FX2\"]");
     script.Call("[\"FX\", \"FX1\", \"FX2\", 3, 4.5]");
     script.Call("{\"FX\": {\"1\": 123, \"4\": 4566, \"1000\": [\"bar\", \"foo\"]}, \"FX2\": [1,[[1,2,[5,[5,[5,6]]]], [[533,122],[99,100]], \"miaou\"],3]}");
     script.Call("[[1,2,[5,[5,[5,6]]]], [[533,122],[99,100]], \"miaou\"]");
+    */
 
     return 0;
 }
