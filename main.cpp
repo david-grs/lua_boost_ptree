@@ -1,7 +1,74 @@
 #include <lua5.2/lua.hpp>
 
+#include "picojson.h"
+
 #include <iostream>
 #include <sstream>
+
+namespace detail
+{
+
+void json_to_table_impl(lua_State* L, const picojson::value& v, int index = 1)
+{
+    if (v.is<picojson::array>())
+    {
+        auto& array = v.get<picojson::array>();
+
+        lua_newtable(L);
+        int i = 1;
+
+        for (auto& v : array)
+        {
+            json_to_table_impl(L, v, index + 1);
+            lua_rawseti(L, -2, i++);
+        }
+
+        if (index > 1)
+            lua_rawseti(L, -2, index);
+    }
+    else if (v.is<picojson::object>())
+    {
+        auto& object = v.get<picojson::object>();
+
+        lua_newtable(L);
+        int top = lua_gettop(L);
+
+        for (auto& p : object)
+        {
+            lua_pushstring(L, p.first.c_str());
+            json_to_table_impl(L, p.second, index + 1);
+            lua_settable(L, top);
+        }
+
+        if (index > 1)
+            lua_rawseti(L, -2, index);
+    }
+    else if (v.is<double>())
+    {
+        lua_pushnumber(L, v.get<double>());
+    }
+    else if (v.is<std::string>())
+    {
+        lua_pushstring(L, v.get<std::string>().c_str());
+    }
+    else if (v.is<bool>())
+    {
+        lua_pushboolean(L, v.get<bool>());
+    }
+}
+
+}
+
+void json_to_table(lua_State* L, const std::string& json)
+{
+    picojson::value v;
+    std::string err = picojson::parse(v, json);
+
+    if (!err.empty())
+        throw std::runtime_error("json parsing failed: " + err);
+
+    detail::json_to_table_impl(L, v);
+}
 
 struct Script
 {
@@ -37,7 +104,9 @@ struct Script
     void Call()
     {
         lua_getglobal(mState, "recv");
-        lua_pushnumber(mState, 1);
+
+        const std::string bla("[\"FX\", \"FX1\", \"FX2\"]");
+        json_to_table(mState, bla);
 
         if (lua_pcall(mState, 1, 1, 0 ) != 0)
             throw std::runtime_error("failed to call callback: " + GetLastError());
