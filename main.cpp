@@ -8,7 +8,7 @@
 namespace detail
 {
 
-void json_to_table_impl(lua_State* L, const picojson::value& v, int index = 1)
+void json_to_table_impl(lua_State* L, const picojson::value& v)
 {
     if (v.is<picojson::array>())
     {
@@ -19,12 +19,9 @@ void json_to_table_impl(lua_State* L, const picojson::value& v, int index = 1)
 
         for (auto& v : array)
         {
-            json_to_table_impl(L, v, index + 1);
+            json_to_table_impl(L, v);
             lua_rawseti(L, -2, i++);
         }
-
-        if (index > 1)
-            lua_rawseti(L, -2, index);
     }
     else if (v.is<picojson::object>())
     {
@@ -36,12 +33,9 @@ void json_to_table_impl(lua_State* L, const picojson::value& v, int index = 1)
         for (auto& p : object)
         {
             lua_pushstring(L, p.first.c_str());
-            json_to_table_impl(L, p.second, index + 1);
+            json_to_table_impl(L, p.second);
             lua_settable(L, top);
         }
-
-        if (index > 1)
-            lua_rawseti(L, -2, index);
     }
     else if (v.is<double>())
     {
@@ -169,10 +163,11 @@ int main(int argc, char** argv)
 
     Script script;
     script.Execute(argv[1]);
-    //script.Call("[\"FX\", \"FX1\", \"FX2\"]");
-    //script.Call("[\"FX\", \"FX1\", \"FX2\", 3, 4.5]");
-    script.Call("{\"FX\": \"1\", \"FX2\": \"2\"}");
-   // script.Call("[\"FX\", [1,2,3], [4,5,6]]");
+    script.Call("[1,2,3]");
+    script.Call("[\"FX\", \"FX1\", \"FX2\"]");
+    script.Call("[\"FX\", \"FX1\", \"FX2\", 3, 4.5]");
+    script.Call("{\"FX\": {\"1\": 123, \"4\": 4566, \"1000\": [\"bar\", \"foo\"]}, \"FX2\": [1,[[1,2,[5,[5,[5,6]]]], [[533,122],[99,100]], \"miaou\"],3]}");
+    script.Call("[[1,2,[5,[5,[5,6]]]], [[533,122],[99,100]], \"miaou\"]");
 
     return 0;
 }
