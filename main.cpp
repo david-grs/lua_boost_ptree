@@ -51,6 +51,86 @@ void json_to_table_impl(lua_State* L, const picojson::value& v)
     }
 }
 
+void table_to_json_impl(lua_State* L, std::ostringstream& oss, int offset = 0)
+{
+    lua_pushvalue(L, -1 + offset);
+    lua_pushnil(L);
+
+    bool first = true;
+
+    while (lua_next(L, -2 + offset))
+    {
+        if (!first)
+            oss << ", ";
+
+        lua_pushvalue(L, -2 + offset);
+        oss << "\"" << lua_tostring(L, -1 + offset) << "\": ";
+
+        switch(lua_type(L, -2))
+        {
+        case LUA_TTABLE: table_to_json_impl(L, oss, -2 + offset); break;
+        case LUA_TNUMBER: oss << lua_tonumber(L, -2 + offset); break;
+        case LUA_TBOOLEAN: oss << lua_toboolean(L, -2 + offset); break;
+        case LUA_TSTRING: oss << "\"" << lua_tostring(L, -2 + offset) << "\""; break;
+        default: break;
+        }
+
+        lua_pop(L, 2 + offset);
+        first = false;
+    }
+
+    lua_pop(L, 1 + offset);
+}
+
+    #define KEY -2
+    #define VAL -1
+
+    void walk (lua_State *, int);
+
+    void
+    print_pair (lua_State *L) {
+
+        switch (lua_type(L, KEY)) {
+            case LUA_TNUMBER:
+                Warn("key: %i\n", lua_tonumber(L, KEY));
+                break;
+            case LUA_TSTRING:
+                Warn("key: %s\n", lua_tostring(L, KEY));
+        }
+
+        switch (lua_type(L, VAL)) {
+            case LUA_TNUMBER:
+                printf("val: %i (number)\n", lua_tonumber(L, VAL));
+                break;
+            case LUA_TSTRING:
+                printf("val: %s (string)\n", lua_tostring(L, VAL));
+                break;
+            case LUA_TTABLE:
+                walk(L, VAL);
+                break;
+            default:
+                Warn("val: other\n");
+        }
+    }
+
+    void walk (lua_State *L, int idx) {
+        lua_pushnil(L);
+
+        printf("idx=%i\n", idx);
+        while (lua_next(L, idx) != 0) {
+            print_pair(L);
+            lua_pop(L, 1);
+        }
+    }
+
+void table_to_json_impl(lua_State* L, std::ostringstream& oss, int offset = 0)
+{
+
+    case LUA_TTABLE:
+    walk(L, lua_gettop(L));
+    break;
+}
+
 }
 
 void json_to_table(lua_State* L, const std::string& json)
@@ -62,6 +142,19 @@ void json_to_table(lua_State* L, const std::string& json)
         throw std::runtime_error("json parsing failed: " + err);
 
     detail::json_to_table_impl(L, v);
+}
+
+std::string table_to_json(lua_State* L)
+{
+    lua_settop(L, 1);
+    luaL_checktype(L, 1, LUA_TTABLE);
+
+    std::ostringstream oss;
+    oss << "{";
+    detail::table_to_json_impl(L, oss);
+    oss << "}";
+
+    return oss.str();
 }
 
 struct Script
@@ -107,33 +200,7 @@ struct Script
 private:
     int Receive(lua_State* L)
     {
-        std::ostringstream oss;
-
-        lua_settop(L, 1);
-        luaL_checktype(L, 1, LUA_TTABLE);
-
-        lua_pushvalue(L, -1);
-        lua_pushnil(L);
-
-        while (lua_next(L, -2))
-        {
-            lua_pushvalue(L, -2);
-            oss << "\"" << lua_tostring(L, -1) << "\": ";
-
-            switch(lua_type(L, -2))
-            {
-            //case LUA_TTABLE: oss << lua_tonumber(L, -2); break;
-            case LUA_TNUMBER: oss << lua_tonumber(L, -2); break;
-            case LUA_TBOOLEAN: oss << lua_toboolean(L, -2); break;
-            case LUA_TSTRING: oss << "\"" << lua_tostring(L, -2) << "\""; break;
-            default: break;
-            }
-
-            lua_pop(L, 2);
-        }
-
-        std::cout << oss.str()<<std::endl;
-
+        std::cout << ::table_to_json(L) <<std::endl;
         return 0;
     }
 

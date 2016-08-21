@@ -20,4 +20,5 @@ end
 
 
 local obj = {key= "str"}
+send({key= "str", miaou=1})
 send({key= "str", miaou={1,2,3}})
