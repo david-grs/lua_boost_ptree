@@ -101,12 +101,10 @@ struct Script
             throw std::runtime_error("error while running lua script: " + GetLastError());
     }
 
-    void Call()
+    void Call(const std::string& json)
     {
         lua_getglobal(mState, "recv");
-
-        const std::string bla("[\"FX\", \"FX1\", \"FX2\"]");
-        json_to_table(mState, bla);
+        json_to_table(mState, json);
 
         if (lua_pcall(mState, 1, 1, 0 ) != 0)
             throw std::runtime_error("failed to call callback: " + GetLastError());
@@ -171,7 +169,10 @@ int main(int argc, char** argv)
 
     Script script;
     script.Execute(argv[1]);
-    script.Call();
+    //script.Call("[\"FX\", \"FX1\", \"FX2\"]");
+    //script.Call("[\"FX\", \"FX1\", \"FX2\", 3, 4.5]");
+    script.Call("{\"FX\": \"1\", \"FX2\": \"2\"}");
+   // script.Call("[\"FX\", [1,2,3], [4,5,6]]");
 
     return 0;
 }
